@@ -22,5 +22,8 @@ dependencies = [
 [tool.setuptools]
 include-package-data = true
 
+[project.scripts]
+server = "server.app:app"
+
 [tool.setuptools.packages.find]
 include = ["expense_audit_env*"]
