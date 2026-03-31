@@ -1,0 +1,19 @@
+{
+  "task_id": "hard",
+  "description": "Borderline and split-receipt cases with asymmetric penalties.",
+  "report_id": "R-HARD-003",
+  "expected_decisions": [
+    "flag",
+    "approve",
+    "reject",
+    "flag",
+    "flag"
+  ],
+  "weights": [
+    1.5,
+    1.0,
+    2.0,
+    1.5,
+    1.5
+  ]
+}

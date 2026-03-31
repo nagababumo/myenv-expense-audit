@@ -1,0 +1,26 @@
+[build-system]
+requires = ["setuptools>=68", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "expense-audit-openenv"
+version = "1.0.0"
+description = "OpenEnv expense auditing environment"
+requires-python = ">=3.10"
+dependencies = [
+  "fastapi>=0.104.0",
+  "uvicorn>=0.24.0",
+  "pydantic>=2.0.0",
+  "requests>=2.25.0",
+  "openenv-core>=0.2.2",
+  "streamlit>=1.25.0",
+  "openai>=1.7.0",
+  "google-genai>=0.2.0",
+  "python-dotenv>=1.0.0",
+]
+
+[tool.setuptools]
+include-package-data = true
+
+[tool.setuptools.packages.find]
+include = ["expense_audit_env*"]

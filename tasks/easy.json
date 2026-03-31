@@ -1,0 +1,8 @@
+{
+  "task_id": "easy",
+  "description": "One clear expense decision.",
+  "report_id": "R-EASY-001",
+  "expected_decisions": [
+    "reject"
+  ]
+}

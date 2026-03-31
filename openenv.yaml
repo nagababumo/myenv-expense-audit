@@ -1,0 +1,10 @@
+name: expense-audit-openenv
+version: "1.0.0"
+description: >
+  Synthetic expense report auditing environment for rule checking,
+  anomaly detection, and deterministic grading.
+tasks:
+  - easy
+  - medium
+  - hard
+entrypoint: app:app

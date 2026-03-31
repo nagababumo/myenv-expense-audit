@@ -1,0 +1,17 @@
+{
+  "task_id": "medium",
+  "description": "Several independent expenses with weighted scoring.",
+  "report_id": "R-MED-002",
+  "expected_decisions": [
+    "approve",
+    "reject",
+    "approve",
+    "reject"
+  ],
+  "weights": [
+    1.0,
+    1.5,
+    2.0,
+    1.0
+  ]
+}
