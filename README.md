@@ -1,11 +1,6 @@
 ---
 ---
 title: Expense Report Auditing Environment
-emoji: 🧾
-colorFrom: blue
-colorTo: green
-sdk: docker
-pinned: false
 ---
 # Expense Report Auditing Environment (OpenEnv)
 
