@@ -163,11 +163,11 @@ The environment follows the OpenEnv pattern:
 - serve it behind FastAPI
 - package it in Docker for Hugging Face Spaces
 
-OpenEnv’s docs describe this flow, including `create_fastapi_app(...)`, Docker packaging, and the `EnvClient` pattern. citeturn596173view0turn325773view1turn777575search1
+OpenEnv’s docs describe this flow, including `create_fastapi_app(...)`, Docker packaging, and the `EnvClient` pattern.
 
 ### 3) Hugging Face Spaces
 
-This repo is ready for a Docker Space because the README has `sdk: docker` and `app_port: 7860`, which is the documented Docker Spaces setup. citeturn596173view1
+This repo is ready for a Docker Space because the README has `sdk: docker` and `app_port: 7860`, which is the documented Docker Spaces setup. 
 
 ## File roles
 
@@ -209,4 +209,4 @@ Multiple independent entries with weighted accuracy.
 ### Hard
 Mixed valid, invalid, and borderline entries. Wrong approvals are penalized more heavily than cautious flags.
 
-The OpenEnv docs also describe the client-side pattern and the project layout used for custom environments, including `models.py`, `server/`, `client.py`, `openenv.yaml`, and Docker packaging. citeturn325773view2turn777575search1
+The OpenEnv docs also describe the client-side pattern and the project layout used for custom environments, including `models.py`, `server/`, `client.py`, `openenv.yaml`, and Docker packaging.
