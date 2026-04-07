@@ -31,7 +31,7 @@ ALLOWED_DECISIONS = {"approve", "reject", "flag"}
 
 
 def get_api_key() -> str:
-    return GOOGLE_API_KEY or OPENAI_API_KEY or HF_TOKEN or ""
+    return OPENAI_API_KEY or GOOGLE_API_KEY or HF_TOKEN or ""
 
 
 def get_provider() -> str:
@@ -40,12 +40,7 @@ def get_provider() -> str:
     if OPENAI_API_KEY:
         return "openai"
     if HF_TOKEN:
-        if API_BASE_URL and API_BASE_URL != "<your-active-api-base-url>":
-            return "openai"
-        raise RuntimeError(
-            "HF_TOKEN is present but API_BASE_URL is missing or not configured. "
-            "Set API_BASE_URL to your OpenAI-compatible endpoint when using HF_TOKEN."
-        )
+        return "huggingface"
     raise RuntimeError(
         "Set OPENAI_API_KEY, GOOGLE_API_KEY, or HF_TOKEN in your environment before running inference.py"
     )
@@ -167,22 +162,22 @@ def build_prompt(obs: Any) -> str:
 
 
 def create_client(provider: str) -> Any:
-    api_key = get_api_key()
-    if not api_key:
-        raise RuntimeError(
-            "Set OPENAI_API_KEY or GOOGLE_API_KEY in your environment before running inference.py"
+    if provider == "openai":
+        return OpenAI(api_key=OPENAI_API_KEY)
+
+    if provider == "google":
+        return OpenAI(
+            api_key=GOOGLE_API_KEY,
+            base_url="https://generativelanguage.googleapis.com/v1beta/openai",
         )
 
-    if provider == "google" and not GOOGLE_API_KEY:
-        raise RuntimeError(
-            "Provider is google but GOOGLE_API_KEY is missing. "
-            "Set GOOGLE_API_KEY in your environment."
+    if provider == "huggingface":
+        return OpenAI(
+            api_key=HF_TOKEN,
+            base_url="https://router.huggingface.co/v1",
         )
 
-    base_url = get_api_base_url()
-    if base_url:
-        return OpenAI(api_key=api_key, base_url=base_url)
-    return OpenAI(api_key=api_key)
+    raise RuntimeError(f"Unknown provider: {provider}")
 
 
 def extract_response_text(response: Any) -> str:
@@ -213,9 +208,8 @@ def extract_response_text(response: Any) -> str:
 
 
 def call_model(client: Any, prompt: str, model: str, temperature: float, provider: str) -> str:
+    mapped_model = map_model_for_provider(model, provider)
     try:
-        # Map model name for the specific provider
-        mapped_model = map_model_for_provider(model, provider)
         response = client.chat.completions.create(
             model=mapped_model,
             messages=[
@@ -226,11 +220,13 @@ def call_model(client: Any, prompt: str, model: str, temperature: float, provide
             max_tokens=250,
         )
         if not response or not getattr(response, "choices", None):
-            raise ValueError("Empty response from OpenAI chat completion")
+            raise ValueError("Empty response from chat completion")
         return response.choices[0].message.content.strip()
+
     except Exception as e:
-        error_msg = str(e)
-        raise ValueError(f"API call failed: {error_msg}") from e
+        status_code = getattr(e, "status_code", None)
+        body = getattr(getattr(e, "response", None), "text", None)
+        raise ValueError(f"API call failed: {type(e).__name__} status={status_code} body={body}") from e
 
 
 def decide(obs: Any, client: Any, model: str, temperature: float, provider: str) -> dict[str, str]:
