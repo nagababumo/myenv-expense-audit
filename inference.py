@@ -53,6 +53,21 @@ def get_model_name() -> str:
     return default_openai if provider == "openai" else default_google
 
 
+def map_model_for_provider(model: str, provider: str) -> str:
+    """Map model names for Google's OpenAI-compatible API."""
+    if provider == "google":
+        # Google's OpenAI-compatible API might use different model identifiers
+        model_mapping = {
+            "gemini-1.5-flash": "gemini-1.5-flash",
+            "gemini-1.5-pro": "gemini-1.5-pro",
+            "gemini-3.1-flash-lite-preview": "gemini-1.5-flash",  # Fallback
+            "gpt-4o-mini": "gemini-1.5-flash",  # Fallback to Gemini
+        }
+        return model_mapping.get(model, model)
+    return model
+
+
+
 def get_api_base_url() -> str | None:
     provider = get_provider()
     if provider == "google":
@@ -174,18 +189,24 @@ def extract_response_text(response: Any) -> str:
 
 
 def call_model(client: Any, prompt: str, model: str, temperature: float, provider: str) -> str:
-    response = client.chat.completions.create(
-        model=model,
-        messages=[
-            {"role": "system", "content": SYSTEM_PROMPT},
-            {"role": "user", "content": prompt},
-        ],
-        temperature=temperature,
-        max_tokens=250,
-    )
-    if not response or not getattr(response, "choices", None):
-        raise ValueError("Empty response from OpenAI chat completion")
-    return response.choices[0].message.content.strip()
+    try:
+        # Map model name for the specific provider
+        mapped_model = map_model_for_provider(model, provider)
+        response = client.chat.completions.create(
+            model=mapped_model,
+            messages=[
+                {"role": "system", "content": SYSTEM_PROMPT},
+                {"role": "user", "content": prompt},
+            ],
+            temperature=temperature,
+            max_tokens=250,
+        )
+        if not response or not getattr(response, "choices", None):
+            raise ValueError("Empty response from OpenAI chat completion")
+        return response.choices[0].message.content.strip()
+    except Exception as e:
+        error_msg = str(e)
+        raise ValueError(f"API call failed: {error_msg}") from e
 
 
 def decide(obs: Any, client: Any, model: str, temperature: float, provider: str) -> dict[str, str]:
