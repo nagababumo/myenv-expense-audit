@@ -68,6 +68,8 @@ def normalize_text(text: str) -> str:
 
 
 def parse_json_text(text: str) -> dict[str, Any]:
+    if not text or not text.strip():
+        raise ValueError("Empty response from model")
     text = normalize_text(text)
     match = re.search(r"\{.*\}", text, re.S)
     if match:
@@ -177,13 +179,16 @@ def extract_response_text(response: Any) -> str:
 
 def call_model(client: Any, prompt: str, model: str, temperature: float, provider: str) -> str:
     if provider == "openai":
-        response = client.responses.create(
+        response = client.chat.completions.create(
             model=model,
-            input=prompt,
+            messages=[
+                {"role": "system", "content": SYSTEM_PROMPT},
+                {"role": "user", "content": prompt},
+            ],
             temperature=temperature,
-            max_output_tokens=250,
+            max_tokens=250,
         )
-        return extract_response_text(response)
+        return response.choices[0].message.content.strip()
 
     from google.genai import types
 
