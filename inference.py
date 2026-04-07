@@ -40,12 +40,14 @@ def get_provider() -> str:
     if OPENAI_API_KEY:
         return "openai"
     if HF_TOKEN:
+        if API_BASE_URL and API_BASE_URL != "<your-active-api-base-url>":
+            return "openai"
         raise RuntimeError(
-            "HF_TOKEN cannot be used directly with the OpenAI client in inference.py. "
-            "Set OPENAI_API_KEY or GOOGLE_API_KEY instead."
+            "HF_TOKEN is present but API_BASE_URL is missing or not configured. "
+            "Set API_BASE_URL to your OpenAI-compatible endpoint when using HF_TOKEN."
         )
     raise RuntimeError(
-        "Set OPENAI_API_KEY or GOOGLE_API_KEY in your environment before running inference.py"
+        "Set OPENAI_API_KEY, GOOGLE_API_KEY, or HF_TOKEN in your environment before running inference.py"
     )
 
 
@@ -80,6 +82,17 @@ def get_api_base_url() -> str | None:
     if API_BASE_URL and API_BASE_URL != "<your-active-api-base-url>":
         return API_BASE_URL
     return None
+
+
+def env_summary() -> dict[str, str]:
+    return {
+        "OPENAI_API_KEY_set": str(bool(OPENAI_API_KEY)),
+        "GOOGLE_API_KEY_set": str(bool(GOOGLE_API_KEY)),
+        "HF_TOKEN_set": str(bool(HF_TOKEN)),
+        "API_BASE_URL_set": str(bool(API_BASE_URL and API_BASE_URL != "<your-active-api-base-url>")),
+        "MODEL_NAME": MODEL_NAME if MODEL_NAME != "<your-active-model-name>" else "<default>",
+        "LOCAL_IMAGE_NAME_set": str(bool(LOCAL_IMAGE_NAME)),
+    }
 
 
 def normalize_text(text: str) -> str:
@@ -275,6 +288,7 @@ def main() -> None:
     )
     args = parser.parse_args()
 
+    print("ENV summary:", env_summary())
     provider = get_provider()
     client = create_client(provider)
     model = args.model or get_model_name()
