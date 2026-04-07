@@ -5,12 +5,19 @@ import re
 from typing import Any
 
 from dotenv import load_dotenv
+from openai import OpenAI
 from expense_audit_env.data import available_tasks, build_report
 from expense_audit_env.grader import grade_task
 from expense_audit_env.models import ExpenseAction
 from expense_audit_env.server.environment import ExpenseAuditEnvironment
 
 load_dotenv()
+
+API_BASE_URL = os.getenv("API_BASE_URL", "<your-active-api-base-url>")
+MODEL_NAME = os.getenv("MODEL_NAME", "<your-active-model-name>")
+HF_TOKEN = os.getenv("HF_TOKEN")
+OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
+LOCAL_IMAGE_NAME = os.getenv("LOCAL_IMAGE_NAME")
 
 SYSTEM_PROMPT = (
     "You are an expert corporate expense auditor.\n"
@@ -23,41 +30,26 @@ ALLOWED_DECISIONS = {"approve", "reject", "flag"}
 
 
 def get_api_key() -> str:
-    return (
-        os.environ.get("OPENAI_API_KEY")
-        or os.environ.get("HF_TOKEN")
-        or os.environ.get("GEMINI_API_KEY")
-        or os.environ.get("GOOGLE_API_KEY")
-        or os.environ.get("GENAI_API_KEY")
-    )
+    return OPENAI_API_KEY or HF_TOKEN or ""
 
 
 def get_provider() -> str:
-    if os.environ.get("OPENAI_API_KEY") or os.environ.get("HF_TOKEN"):
+    if OPENAI_API_KEY or HF_TOKEN:
         return "openai"
-    if (
-        os.environ.get("GEMINI_API_KEY")
-        or os.environ.get("GOOGLE_API_KEY")
-        or os.environ.get("GENAI_API_KEY")
-    ):
-        return "gemini"
     raise RuntimeError(
-        "Set OPENAI_API_KEY / HF_TOKEN or GEMINI_API_KEY / GOOGLE_API_KEY / GENAI_API_KEY"
+        "Set OPENAI_API_KEY or HF_TOKEN in your environment before running inference.py"
     )
 
 
 def get_model_name() -> str:
     default_openai = "gpt-4o-mini"
-    default_gemini = "gemini-3.1-flash-lite-preview"
-    provider = get_provider()
-    return os.environ.get(
-        "MODEL_NAME",
-        default_openai if provider == "openai" else default_gemini,
-    )
+    if MODEL_NAME and MODEL_NAME != "<your-active-model-name>":
+        return MODEL_NAME
+    return default_openai
 
 
 def get_api_base_url() -> str | None:
-    return os.environ.get("API_BASE_URL")
+    return API_BASE_URL if API_BASE_URL and API_BASE_URL != "<your-active-api-base-url>" else None
 
 
 def normalize_text(text: str) -> str:
@@ -135,19 +127,13 @@ def create_client(provider: str) -> Any:
     api_key = get_api_key()
     if not api_key:
         raise RuntimeError(
-            "Set OPENAI_API_KEY / HF_TOKEN or GEMINI_API_KEY / GOOGLE_API_KEY / GENAI_API_KEY in your environment before running inference.py"
+            "Set OPENAI_API_KEY or HF_TOKEN in your environment before running inference.py"
         )
 
-    if provider == "openai":
-        import openai
-
-        base_url = get_api_base_url()
-        if base_url:
-            return openai.OpenAI(api_key=api_key, base_url=base_url)
-        return openai.OpenAI(api_key=api_key)
-
-    from google import genai
-    return genai.Client(api_key=api_key)
+    base_url = get_api_base_url()
+    if base_url:
+        return OpenAI(api_key=api_key, base_url=base_url)
+    return OpenAI(api_key=api_key)
 
 
 def extract_response_text(response: Any) -> str:
@@ -178,33 +164,18 @@ def extract_response_text(response: Any) -> str:
 
 
 def call_model(client: Any, prompt: str, model: str, temperature: float, provider: str) -> str:
-    if provider == "openai":
-        response = client.chat.completions.create(
-            model=model,
-            messages=[
-                {"role": "system", "content": SYSTEM_PROMPT},
-                {"role": "user", "content": prompt},
-            ],
-            temperature=temperature,
-            max_tokens=250,
-        )
-        return response.choices[0].message.content.strip()
-
-    from google.genai import types
-
-    contents = [
-        types.Content(
-            role="user",
-            parts=[types.Part.from_text(text=prompt)],
-        )
-    ]
-    config = types.GenerateContentConfig(temperature=temperature)
-    response = client.models.generate_content(
+    response = client.chat.completions.create(
         model=model,
-        contents=contents,
-        config=config,
+        messages=[
+            {"role": "system", "content": SYSTEM_PROMPT},
+            {"role": "user", "content": prompt},
+        ],
+        temperature=temperature,
+        max_tokens=250,
     )
-    return extract_response_text(response)
+    if not response or not getattr(response, "choices", None):
+        raise ValueError("Empty response from OpenAI chat completion")
+    return response.choices[0].message.content.strip()
 
 
 def decide(obs: Any, client: Any, model: str, temperature: float, provider: str) -> dict[str, str]:
@@ -265,18 +236,22 @@ def main() -> None:
     provider = get_provider()
     client = create_client(provider)
     model = args.model or get_model_name()
+    print("START inference")
     print(f"Using provider={provider}, model={model}, temperature={args.temperature}")
 
     tasks = [args.task] if args.task != "all" else available_tasks()
     scores = {}
     for task in tasks:
+        print(f"STEP {task} start")
         decisions, score = run_task(task, client, model, args.temperature, provider)
         scores[task] = score
+        print(f"STEP {task} complete score={score:.6f}")
     print("\n=== Baseline scores ===")
     for task, score in scores.items():
         print(f"{task}: {score:.6f}")
     average = sum(scores.values()) / len(scores) if scores else 0.0
     print(f"Average score: {average:.6f}")
+    print("END inference")
 
 
 if __name__ == "__main__":
