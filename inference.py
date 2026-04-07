@@ -17,6 +17,7 @@ API_BASE_URL = os.getenv("API_BASE_URL", "<your-active-api-base-url>")
 MODEL_NAME = os.getenv("MODEL_NAME", "<your-active-model-name>")
 HF_TOKEN = os.getenv("HF_TOKEN")
 OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
+GOOGLE_API_KEY = os.getenv("GOOGLE_API_KEY")
 LOCAL_IMAGE_NAME = os.getenv("LOCAL_IMAGE_NAME")
 
 SYSTEM_PROMPT = (
@@ -30,26 +31,35 @@ ALLOWED_DECISIONS = {"approve", "reject", "flag"}
 
 
 def get_api_key() -> str:
-    return OPENAI_API_KEY or HF_TOKEN or ""
+    return OPENAI_API_KEY or HF_TOKEN or GOOGLE_API_KEY or ""
 
 
 def get_provider() -> str:
     if OPENAI_API_KEY or HF_TOKEN:
         return "openai"
+    if GOOGLE_API_KEY:
+        return "google"
     raise RuntimeError(
-        "Set OPENAI_API_KEY or HF_TOKEN in your environment before running inference.py"
+        "Set OPENAI_API_KEY, HF_TOKEN, or GOOGLE_API_KEY in your environment before running inference.py"
     )
 
 
 def get_model_name() -> str:
     default_openai = "gpt-4o-mini"
+    default_google = "gemini-1.5-flash"
+    provider = get_provider()
     if MODEL_NAME and MODEL_NAME != "<your-active-model-name>":
         return MODEL_NAME
-    return default_openai
+    return default_openai if provider == "openai" else default_google
 
 
 def get_api_base_url() -> str | None:
-    return API_BASE_URL if API_BASE_URL and API_BASE_URL != "<your-active-api-base-url>" else None
+    provider = get_provider()
+    if provider == "google":
+        return "https://generativelanguage.googleapis.com/v1beta/openai/"
+    if API_BASE_URL and API_BASE_URL != "<your-active-api-base-url>":
+        return API_BASE_URL
+    return None
 
 
 def normalize_text(text: str) -> str:
