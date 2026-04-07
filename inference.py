@@ -31,7 +31,7 @@ ALLOWED_DECISIONS = {"approve", "reject", "flag"}
 
 
 def get_api_key() -> str:
-    return OPENAI_API_KEY or HF_TOKEN or GOOGLE_API_KEY or ""
+    return GOOGLE_API_KEY or OPENAI_API_KEY or HF_TOKEN or ""
 
 
 def get_provider() -> str:
