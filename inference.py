@@ -35,12 +35,17 @@ def get_api_key() -> str:
 
 
 def get_provider() -> str:
-    if OPENAI_API_KEY or HF_TOKEN:
-        return "openai"
     if GOOGLE_API_KEY:
         return "google"
+    if OPENAI_API_KEY:
+        return "openai"
+    if HF_TOKEN:
+        raise RuntimeError(
+            "HF_TOKEN cannot be used directly with the OpenAI client in inference.py. "
+            "Set OPENAI_API_KEY or GOOGLE_API_KEY instead."
+        )
     raise RuntimeError(
-        "Set OPENAI_API_KEY, HF_TOKEN, or GOOGLE_API_KEY in your environment before running inference.py"
+        "Set OPENAI_API_KEY or GOOGLE_API_KEY in your environment before running inference.py"
     )
 
 
@@ -71,7 +76,7 @@ def map_model_for_provider(model: str, provider: str) -> str:
 def get_api_base_url() -> str | None:
     provider = get_provider()
     if provider == "google":
-        return "https://generativelanguage.googleapis.com/v1beta/openai/"
+        return "https://generativelanguage.googleapis.com/v1beta/openai"
     if API_BASE_URL and API_BASE_URL != "<your-active-api-base-url>":
         return API_BASE_URL
     return None
@@ -152,7 +157,13 @@ def create_client(provider: str) -> Any:
     api_key = get_api_key()
     if not api_key:
         raise RuntimeError(
-            "Set OPENAI_API_KEY or HF_TOKEN in your environment before running inference.py"
+            "Set OPENAI_API_KEY or GOOGLE_API_KEY in your environment before running inference.py"
+        )
+
+    if provider == "google" and not GOOGLE_API_KEY:
+        raise RuntimeError(
+            "Provider is google but GOOGLE_API_KEY is missing. "
+            "Set GOOGLE_API_KEY in your environment."
         )
 
     base_url = get_api_base_url()
